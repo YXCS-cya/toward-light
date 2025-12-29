@@ -1,0 +1,31 @@
+guide:
+  default-cards:
+    - title: "回到当时"
+      questions:
+        - "发生了什么？和我说说吧。"
+        - "当时你最先注意到了什么呢？"
+#    - title: "情绪命名"
+#      questions:
+#        - "你会给这种感受起一个名字吗？"
+#        - "它更像哪种情绪：担心、难过、愤怒、内疚、疲惫？"
+
+  rules:
+    - emotionCode: "ANXIETY"
+      eventCode: "STUDY"
+      cards:
+        - title: "焦虑 × 学业"
+          questions:
+            - "你最担心的结果是什么？"
+            - "如果最坏情况发生，你会怎么应对？"
+        - title: "可控与不可控"
+          questions:
+            - "这件事里哪些部分是你能控制的？"
+            - "你能做的最小一步是什么？"
+
+    - emotionCode: "SAD"
+      eventCode: "FAMILY"
+      cards:
+        - title: "难过 × 家庭"
+          questions:
+            - "这份难过更多来自失去、误解还是无力？"
+            - "你希望对方理解你什么？"

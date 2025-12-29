@@ -10,9 +10,9 @@ import com.yaoan.emotion_narrative_backend.story.vo.StoryListItemVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-/** 只做转发 + 返回 Result*/
+/* 只做转发 + 返回 Result*/
 @RestController
-@RequestMapping("/stories")
+@RequestMapping("/api/stories")
 @RequiredArgsConstructor
 public class StoryController {
 
