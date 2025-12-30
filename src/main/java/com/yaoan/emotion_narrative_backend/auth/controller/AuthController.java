@@ -8,7 +8,7 @@ import com.yaoan.emotion_narrative_backend.user.vo.LoginResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-/** 只负责参数接收与返回*/
+/*只负责参数接收与返回*/
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
