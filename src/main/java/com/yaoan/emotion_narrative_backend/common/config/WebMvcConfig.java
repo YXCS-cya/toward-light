@@ -20,9 +20,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/auth/login",
                         "/error",
                         "/swagger-ui/**",
-                        "/v3/api-docs/**"
+                        "/v3/api-docs/**",
+                        "/mq-test/**"
                 );
     }
+
 
     /** 关键：全局 CORS（让 5173前端 能访问 8081） */
     @Override
