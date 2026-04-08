@@ -3,6 +3,8 @@ package com.yaoan.emotion_narrative_backend.story.service;
 import com.yaoan.emotion_narrative_backend.common.auth.UserContext;
 import com.yaoan.emotion_narrative_backend.common.exception.BusinessException;
 import com.yaoan.emotion_narrative_backend.common.exception.ErrorCode;
+import com.yaoan.emotion_narrative_backend.mq.dto.StorySavedMessage;
+import com.yaoan.emotion_narrative_backend.mq.producer.StoryMqProducer;
 import com.yaoan.emotion_narrative_backend.story.dto.StoryCreateRequest;
 import com.yaoan.emotion_narrative_backend.story.dto.StoryUpdateRequest;
 import com.yaoan.emotion_narrative_backend.story.entity.StoryRecord;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 public class StoryServiceImpl implements StoryService {
 
     private final StoryRecordRepository repository;
+    private final StoryMqProducer storyMqProducer;
 
     @Override
     public Long create(StoryCreateRequest req) {
@@ -35,12 +38,21 @@ public class StoryServiceImpl implements StoryService {
         r.setEventTypeId(req.getEventTypeId());
         r.setIsDeleted(false);
 
-        // created_at/updated_at 你表有默认值，但为了实体可读性这里也写一下
         LocalDateTime now = LocalDateTime.now();
         r.setCreatedAt(now);
         r.setUpdatedAt(now);
 
-        return repository.save(r).getId();
+        //在原有的新建业务中新增MQ组件，使此处成为生产者
+        StoryRecord saved = repository.save(r);
+
+        StorySavedMessage message = new StorySavedMessage(
+                saved.getId(),
+                userId,
+                LocalDateTime.now()
+        );
+        storyMqProducer.sendStorySavedMessage(message);
+
+        return saved.getId();
     }
 
     @Override
