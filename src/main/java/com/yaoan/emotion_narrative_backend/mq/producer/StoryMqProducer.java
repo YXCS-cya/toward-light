@@ -1,6 +1,6 @@
 package com.yaoan.emotion_narrative_backend.mq.producer;
 
-import com.yaoan.emotion_narrative_backend.mq.dto.StorySavedMessage;
+import com.yaoan.emotion_narrative_backend.mq.dto.StoryEventMessage;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
@@ -16,7 +16,7 @@ public class StoryMqProducer {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    public void sendStorySavedMessage(StorySavedMessage message) {
+    public void sendStoryEvent(StoryEventMessage message) {
         rabbitTemplate.convertAndSend(QUEUE_NAME, message);
     }
 }

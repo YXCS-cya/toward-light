@@ -3,7 +3,8 @@ package com.yaoan.emotion_narrative_backend.story.service;
 import com.yaoan.emotion_narrative_backend.common.auth.UserContext;
 import com.yaoan.emotion_narrative_backend.common.exception.BusinessException;
 import com.yaoan.emotion_narrative_backend.common.exception.ErrorCode;
-import com.yaoan.emotion_narrative_backend.mq.dto.StorySavedMessage;
+import com.yaoan.emotion_narrative_backend.mq.dto.StoryEventMessage;
+import com.yaoan.emotion_narrative_backend.mq.dto.StoryEventType;
 import com.yaoan.emotion_narrative_backend.mq.producer.StoryMqProducer;
 import com.yaoan.emotion_narrative_backend.story.dto.StoryCreateRequest;
 import com.yaoan.emotion_narrative_backend.story.dto.StoryUpdateRequest;
@@ -42,15 +43,15 @@ public class StoryServiceImpl implements StoryService {
         r.setCreatedAt(now);
         r.setUpdatedAt(now);
 
-        //在原有的新建业务中新增MQ组件，使此处成为生产者
         StoryRecord saved = repository.save(r);
 
-        StorySavedMessage message = new StorySavedMessage(
+        StoryEventMessage message = new StoryEventMessage(
+                StoryEventType.STORY_CREATED,
                 saved.getId(),
                 userId,
                 LocalDateTime.now()
         );
-        storyMqProducer.sendStorySavedMessage(message);
+        storyMqProducer.sendStoryEvent(message);
 
         return saved.getId();
     }
@@ -103,8 +104,16 @@ public class StoryServiceImpl implements StoryService {
         r.setEmotionTagId(req.getEmotionTagId());
         r.setEventTypeId(req.getEventTypeId());
         r.setUpdatedAt(LocalDateTime.now());
+//！！！一定是先确定更新了才能发送消息
+        StoryRecord updated = repository.save(r);
 
-        repository.save(r);
+        StoryEventMessage message = new StoryEventMessage(
+                StoryEventType.STORY_UPDATED,
+                updated.getId(),
+                userId,
+                LocalDateTime.now()
+        );
+        storyMqProducer.sendStoryEvent(message);
     }
 
     @Override
@@ -116,7 +125,15 @@ public class StoryServiceImpl implements StoryService {
         r.setIsDeleted(true);
         r.setDeletedAt(LocalDateTime.now());
         r.setUpdatedAt(LocalDateTime.now());
+//！！！一定是先确定删除了才能发送消息，不然删除后短期内语义检索可能还能搜到已删除记录（因为我采用的是软删除）
+        StoryRecord deleted = repository.save(r);
 
-        repository.save(r);
+        StoryEventMessage message = new StoryEventMessage(
+                StoryEventType.STORY_DELETED,
+                deleted.getId(),
+                userId,
+                LocalDateTime.now()
+        );
+        storyMqProducer.sendStoryEvent(message);
     }
 }
