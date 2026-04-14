@@ -73,3 +73,7 @@ guide:
           questions:
             - "这份难过更多来自失去、误解还是无力？"
             - "你希望对方理解你什么？"
+
+ai:
+  service:
+    base-url: http://127.0.0.1:8000

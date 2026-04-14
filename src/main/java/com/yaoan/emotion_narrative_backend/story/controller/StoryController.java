@@ -10,6 +10,7 @@ import com.yaoan.emotion_narrative_backend.story.vo.StoryListItemVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import com.yaoan.emotion_narrative_backend.story.dto.SemanticSearchRequest;
 /* 只做转发 + 返回 Result*/
 @RestController
 @RequestMapping("/api/stories")
@@ -46,5 +47,17 @@ public class StoryController {
     public Result<Void> delete(@PathVariable Long id) {
         storyService.delete(id);
         return Result.success();
+    }
+    @PostMapping("/semantic-search")
+    public Result<java.util.List<StoryListItemVO>> semanticSearch(
+            @Valid @RequestBody SemanticSearchRequest req
+    ) {
+        return Result.success(
+                storyService.semanticSearch(
+                        req.getQuery(),
+                        req.getTopK(),
+                        req.getMaxDistance()
+                )
+        );
     }
 }

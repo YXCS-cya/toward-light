@@ -72,4 +72,6 @@ public interface StoryRecordRepository extends JpaRepository<StoryRecord, Long> 
 """)
     List<EmotionEventStatVO> countByEmotionEvent(@Param("userId") Long userId);
 
+    List<StoryRecord> findByIdInAndUserIdAndIsDeleted(List<Long> ids, Long userId, Boolean isDeleted);
+
 }

@@ -13,9 +13,18 @@ import com.yaoan.emotion_narrative_backend.story.repository.StoryRecordRepositor
 import com.yaoan.emotion_narrative_backend.story.vo.PageResult;
 import com.yaoan.emotion_narrative_backend.story.vo.StoryDetailVO;
 import com.yaoan.emotion_narrative_backend.story.vo.StoryListItemVO;
+import com.yaoan.emotion_narrative_backend.story.dto.PythonSemanticSearchRequest;
+import com.yaoan.emotion_narrative_backend.story.dto.PythonSemanticSearchResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.*;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
@@ -26,6 +35,10 @@ public class StoryServiceImpl implements StoryService {
 
     private final StoryRecordRepository repository;
     private final StoryMqProducer storyMqProducer;
+    private final RestTemplate restTemplate;
+
+    @Value("${ai.service.base-url}")
+    private String aiServiceBaseUrl;
 
     @Override
     public Long create(StoryCreateRequest req) {
@@ -135,5 +148,62 @@ public class StoryServiceImpl implements StoryService {
                 LocalDateTime.now()
         );
         storyMqProducer.sendStoryEvent(message);
+    }
+
+    @Override
+    public List<StoryListItemVO> semanticSearch(String query, Integer topK, Double maxDistance) {
+        /*
+        * 这个方法整合了python的语义检索
+        * 1. 调用python的语义检索服务，获取topK个storyId
+        * 2. 根据storyId查询数据库，获取storyId对应的story
+        * 3. 返回storyId对应的story
+        * **/
+        Long userId = UserContext.getUserId();
+
+        PythonSemanticSearchRequest requestBody =
+                new PythonSemanticSearchRequest(userId, query, topK, maxDistance);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<PythonSemanticSearchRequest> requestEntity =
+                new HttpEntity<>(requestBody, headers);
+
+        ResponseEntity<PythonSemanticSearchResponse> response = restTemplate.exchange(
+                aiServiceBaseUrl + "/semantic-search",
+                HttpMethod.POST,
+                requestEntity,
+                PythonSemanticSearchResponse.class
+        );
+
+        PythonSemanticSearchResponse body = response.getBody();
+        if (body == null || body.getStoryIds() == null || body.getStoryIds().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> storyIds = body.getStoryIds();
+
+        // 二次兜底：只查当前用户、未删除的数据  其实Python那边有一道筛选了，但以防万一吧
+        List<StoryRecord> stories = repository.findByIdInAndUserIdAndIsDeleted(storyIds, userId, false);
+
+        // 按 Python 返回的 storyIds 顺序重排
+        Map<Long, StoryRecord> storyMap = stories.stream()
+                .collect(Collectors.toMap(StoryRecord::getId, story -> story));
+
+        List<StoryListItemVO> result = new ArrayList<>();
+        for (Long storyId : storyIds) {
+            StoryRecord story = storyMap.get(storyId);
+            if (story != null) {
+                result.add(new StoryListItemVO(
+                        story.getId(),
+                        story.getTitle(),
+                        story.getEmotionTagId(),
+                        story.getEventTypeId(),
+                        story.getCreatedAt()
+                ));
+            }
+        }
+
+        return result;
     }
 }

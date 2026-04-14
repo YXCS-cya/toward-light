@@ -6,10 +6,13 @@ import com.yaoan.emotion_narrative_backend.story.vo.PageResult;
 import com.yaoan.emotion_narrative_backend.story.vo.StoryDetailVO;
 import com.yaoan.emotion_narrative_backend.story.vo.StoryListItemVO;
 
+import java.util.List;
+
 public interface StoryService {
     Long create(StoryCreateRequest req);
     PageResult<StoryListItemVO> list(int page, int size);
     StoryDetailVO detail(Long id);
     void update(Long id, StoryUpdateRequest req);
     void delete(Long id);
+    List<StoryListItemVO> semanticSearch(String query, Integer topK, Double maxDistance);//语义检索
 }
