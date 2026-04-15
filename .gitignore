@@ -1,0 +1,47 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Java
+backend/target/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Python
+ai-service/__pycache__/
+ai-service/.venv/
+ai-service/venv/
+ai-service/env/
+ai-service/*.pyc
+
+# Logs
+*.log
+
+# Env
+.env
+.env.*
+
+# Python cache
+*.pyo
+.pytest_cache/
+
+# Misc
+coverage/
+
+# Python cache
+ai-service/__pycache__/
+*.pyc
+
+# AI runtime data
+ai-service/data/*.bin
+ai-service/data/*.json
+
+ai-service/data/*
+!ai-service/data/.gitkeep

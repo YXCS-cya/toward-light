@@ -1,0 +1,8 @@
+fastapi  ##Web 框架
+uvicorn ##运行 FastAPI 的服务器
+pika  ##RabbitMQ 客户端
+python-dotenv
+pymysql
+openai
+pydantic-settings
+faiss-cpu
