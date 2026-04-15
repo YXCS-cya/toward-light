@@ -6,15 +6,12 @@ import com.yaoan.emotion_narrative_backend.common.exception.ErrorCode;
 import com.yaoan.emotion_narrative_backend.mq.dto.StoryEventMessage;
 import com.yaoan.emotion_narrative_backend.mq.dto.StoryEventType;
 import com.yaoan.emotion_narrative_backend.mq.producer.StoryMqProducer;
-import com.yaoan.emotion_narrative_backend.story.dto.StoryCreateRequest;
-import com.yaoan.emotion_narrative_backend.story.dto.StoryUpdateRequest;
+import com.yaoan.emotion_narrative_backend.story.dto.*;
 import com.yaoan.emotion_narrative_backend.story.entity.StoryRecord;
 import com.yaoan.emotion_narrative_backend.story.repository.StoryRecordRepository;
 import com.yaoan.emotion_narrative_backend.story.vo.PageResult;
 import com.yaoan.emotion_narrative_backend.story.vo.StoryDetailVO;
 import com.yaoan.emotion_narrative_backend.story.vo.StoryListItemVO;
-import com.yaoan.emotion_narrative_backend.story.dto.PythonSemanticSearchRequest;
-import com.yaoan.emotion_narrative_backend.story.dto.PythonSemanticSearchResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
@@ -25,6 +22,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import com.yaoan.emotion_narrative_backend.story.dto.PythonAnalyzeStoryRequest;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
@@ -205,5 +210,119 @@ public class StoryServiceImpl implements StoryService {
         }
 
         return result;
+    }
+    @Override
+    public String aiAnalysis(Long id) {
+        Long userId = UserContext.getUserId();
+
+        StoryRecord story = repository.findByIdAndUserIdAndIsDeleted(id, userId, false)
+                .orElseThrow(() -> new BusinessException(ErrorCode.STORY_NOT_FOUND));
+
+        PythonAnalyzeStoryRequest requestBody = new PythonAnalyzeStoryRequest(story.getContent());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<PythonAnalyzeStoryRequest> requestEntity =
+                new HttpEntity<>(requestBody, headers);
+
+        ResponseEntity<PythonAnalyzeStoryResponse> response = restTemplate.exchange(
+                aiServiceBaseUrl + "/analyze-story",
+                HttpMethod.POST,
+                requestEntity,
+                PythonAnalyzeStoryResponse.class
+        );
+
+        PythonAnalyzeStoryResponse body = response.getBody();
+        if (body == null || body.getAnalysis() == null || body.getAnalysis().isBlank()) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+        }
+
+        return body.getAnalysis();
+    }
+    // 改成使用SSE流式传输，提高用户体验
+    @Override
+    public SseEmitter aiAnalysisStream(Long id) {
+        Long userId = UserContext.getUserId();
+
+        StoryRecord story = repository.findByIdAndUserIdAndIsDeleted(id, userId, false)
+                .orElseThrow(() -> new BusinessException(ErrorCode.STORY_NOT_FOUND));
+
+        SseEmitter emitter = new SseEmitter(0L);
+
+        // ！！！我觉得算是最重要的一步，创建一个CompletableFuture，用于异步执行Python的AI分析，不能把 Controller 线程一直卡住
+        CompletableFuture.runAsync(() -> {
+            try {
+                PythonAnalyzeStoryRequest requestBody =
+                        new PythonAnalyzeStoryRequest(story.getContent());
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<PythonAnalyzeStoryRequest> requestEntity =
+                        new HttpEntity<>(requestBody, headers);
+
+                restTemplate.execute(
+                        // SSE要拿到底层响应流，一行一行读，所以 execute(...) 比之前的exchange(...)更合适
+                        aiServiceBaseUrl + "/analyze-story-stream",
+                        HttpMethod.POST,
+                        request -> {
+                            request.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+                            request.getHeaders().setAccept(List.of(MediaType.TEXT_EVENT_STREAM));
+
+                            String jsonBody = """
+                                {"content": %s}
+                                """.formatted(toJsonString(story.getContent()));
+
+                            request.getBody().write(jsonBody.getBytes(StandardCharsets.UTF_8));
+                        },
+                        response -> {
+                            try (BufferedReader reader = new BufferedReader(
+                                    new InputStreamReader(response.getBody(), StandardCharsets.UTF_8))) {
+
+                                String line;
+                                while ((line = reader.readLine()) != null) {
+                                    if (line.isBlank()) {
+                                        continue;
+                                    }
+
+                                    if (line.startsWith("data: ")) {
+                                        String data = line.substring(6);
+
+                                        if ("[DONE]".equals(data)) {
+                                            emitter.complete();
+                                            break;
+                                        }
+
+                                        emitter.send(SseEmitter.event().data(data));
+                                    } else if (line.startsWith("event: error")) {
+                                        emitter.completeWithError(new RuntimeException("python stream error"));
+                                        break;
+                                    }
+                                }
+                            }
+
+                            emitter.complete();
+                            return null;
+                        }
+                );
+
+            } catch (Exception e) {
+                emitter.completeWithError(e);
+            }
+        });
+
+        return emitter;
+    }
+    // 将字符串转换为JSON字符串，好传输
+    private String toJsonString(String text) {
+        if (text == null) {
+            return "null";
+        }
+        return "\"" + text
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r") + "\"";
     }
 }

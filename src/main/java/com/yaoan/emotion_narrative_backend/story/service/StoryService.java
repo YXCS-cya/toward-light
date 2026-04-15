@@ -5,6 +5,7 @@ import com.yaoan.emotion_narrative_backend.story.dto.StoryUpdateRequest;
 import com.yaoan.emotion_narrative_backend.story.vo.PageResult;
 import com.yaoan.emotion_narrative_backend.story.vo.StoryDetailVO;
 import com.yaoan.emotion_narrative_backend.story.vo.StoryListItemVO;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -15,4 +16,6 @@ public interface StoryService {
     void update(Long id, StoryUpdateRequest req);
     void delete(Long id);
     List<StoryListItemVO> semanticSearch(String query, Integer topK, Double maxDistance);//语义检索
+    String aiAnalysis(Long id);
+    SseEmitter aiAnalysisStream(Long id);
 }

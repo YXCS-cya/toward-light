@@ -1,6 +1,7 @@
 package com.yaoan.emotion_narrative_backend.story.controller;
 
 import com.yaoan.emotion_narrative_backend.common.result.Result;
+import com.yaoan.emotion_narrative_backend.story.dto.SemanticSearchRequest;
 import com.yaoan.emotion_narrative_backend.story.dto.StoryCreateRequest;
 import com.yaoan.emotion_narrative_backend.story.dto.StoryUpdateRequest;
 import com.yaoan.emotion_narrative_backend.story.service.StoryService;
@@ -10,8 +11,8 @@ import com.yaoan.emotion_narrative_backend.story.vo.StoryListItemVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import com.yaoan.emotion_narrative_backend.story.dto.SemanticSearchRequest;
-/* 只做转发 + 返回 Result*/
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
 @RestController
 @RequestMapping("/api/stories")
 @RequiredArgsConstructor
@@ -37,6 +38,11 @@ public class StoryController {
         return Result.success(storyService.detail(id));
     }
 
+    @GetMapping("/{id}/ai-analysis")
+    public Result<String> aiAnalysis(@PathVariable Long id) {
+        return Result.success(storyService.aiAnalysis(id));
+    }
+
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @Valid @RequestBody StoryUpdateRequest req) {
         storyService.update(id, req);
@@ -48,6 +54,7 @@ public class StoryController {
         storyService.delete(id);
         return Result.success();
     }
+
     @PostMapping("/semantic-search")
     public Result<java.util.List<StoryListItemVO>> semanticSearch(
             @Valid @RequestBody SemanticSearchRequest req
@@ -59,5 +66,11 @@ public class StoryController {
                         req.getMaxDistance()
                 )
         );
+    }
+
+    // 流式接口
+    @GetMapping("/{id}/ai-analysis/stream")
+    public SseEmitter aiAnalysisStream(@PathVariable Long id) {
+        return storyService.aiAnalysisStream(id);
     }
 }
