@@ -266,10 +266,3 @@ When a story changes, backend publishes a queue event. Consumer recalculates emb
 - Add CI checks for Java/Python/Frontend tests and linting.
 - Add retry/dead-letter handling for message failures.
 
----
-
-If you want, I can also generate:
-
-- a **Chinese README** matching this structure,
-- a **deployment README** (Dockerized full stack),
-- or a **contributor guide** (code style + test commands + branching strategy).
